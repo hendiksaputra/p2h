@@ -1,19 +1,37 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import type { CSSProperties } from "react";
 import { AppShell } from "@/components/AppShell";
 import "./globals.css";
 
 export const dynamic = "force-dynamic";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
+/**
+ * Tanpa Google Fonts: build/server tanpa egress ke fonts.googleapis.com
+ * (mis. firewall IDCloudHost). Tetap isi --font-* untuk @theme di globals.css.
+ */
+const FONT_VARS: CSSProperties = {
+  ["--font-geist-sans" as string]: [
+    "ui-sans-serif",
+    "system-ui",
+    "-apple-system",
+    "BlinkMacSystemFont",
+    '"Segoe UI"',
+    "Roboto",
+    '"Helvetica Neue"',
+    "Arial",
+    '"Noto Sans"',
+    "sans-serif",
+  ].join(", "),
+  ["--font-geist-mono" as string]: [
+    "ui-monospace",
+    "SFMono-Regular",
+    '"SF Mono"',
+    "Menlo",
+    "Consolas",
+    '"Liberation Mono"',
+    "monospace",
+  ].join(", "),
+};
 
 export const metadata: Metadata = {
   title: "P2H Kendaraan",
@@ -26,7 +44,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="id" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
+    <html lang="id" className="h-full antialiased" style={FONT_VARS}>
       <body className="min-h-dvh font-sans">
         <AppShell>{children}</AppShell>
       </body>
