@@ -1,0 +1,196 @@
+// P2H — Pemeriksaan / Pemeliharaan Harian Kendaraan
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum CheckResult {
+  OK
+  NOT_OK
+  NA
+}
+
+enum InspectionStatus {
+  DRAFT
+  SUBMITTED
+}
+
+/// Kelayakan operasional unit dari agregasi hasil checklist (otomatis).
+enum InspectionRoadworthiness {
+  LAYAK_JALAN
+  RUSAK_RINGAN_PERLU_PERBAIKAN
+  TIDAK_LAYAK_JALAN
+}
+
+/// Asal pencatatan riwayat kelayakan (audit).
+enum InspectionRoadworthinessEventSource {
+  PEMERIKSAAN_AWAL
+  PEMBARUAN_PERBAIKAN
+}
+
+model Vehicle {
+  id          String   @id @default(cuid())
+  plateNumber String   @map("plate_number")
+  unitNo      String?  @map("unit_no")
+  brand       String?
+  model       String?
+  vehicleType String?  @map("vehicle_type")
+  year        Int?
+  notes       String?  @db.Text
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  inspections Inspection[]
+
+  @@map("vehicles")
+}
+
+model ChecklistItem {
+  id          String   @id @default(cuid())
+  category    String
+  label       String
+  description String?  @db.Text
+  sortOrder   Int      @default(0) @map("sort_order")
+  isActive    Boolean  @default(true) @map("is_active")
+
+  lines InspectionLine[]
+
+  @@map("checklist_items")
+}
+
+model Inspection {
+  id            String           @id @default(cuid())
+  vehicleId     String           @map("vehicle_id")
+  inspectorName String           @map("inspector_name")
+  inspectedAt   DateTime         @default(now()) @map("inspected_at")
+  odometerKm    Int?             @map("odometer_km")
+  fuelLevel     String?          @map("fuel_level")
+  overallNotes   String?                    @map("overall_notes") @db.Text
+  status         InspectionStatus           @default(DRAFT)
+  roadworthiness InspectionRoadworthiness?  @map("roadworthiness")
+
+  vehicle                 Vehicle                           @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  lines                   InspectionLine[]
+  roadworthinessHistory   InspectionRoadworthinessHistory[]
+
+  @@index([vehicleId])
+  @@index([inspectedAt])
+  @@map("inspections")
+}
+
+/// Riwayat kapan status kelayakan berubah (awal pemeriksaan, setelah perbaikan, dll.).
+model InspectionRoadworthinessHistory {
+  id               String                            @id @default(cuid())
+  inspectionId     String                            @map("inspection_id")
+  roadworthiness   InspectionRoadworthiness          @map("roadworthiness")
+  source           InspectionRoadworthinessEventSource @map("source")
+  recordedAt       DateTime                          @default(now()) @map("recorded_at")
+
+  inspection Inspection @relation(fields: [inspectionId], references: [id], onDelete: Cascade)
+
+  @@index([inspectionId, recordedAt])
+  @@map("inspection_roadworthiness_history")
+}
+
+model InspectionLine {
+  id           String      @id @default(cuid())
+  inspectionId String      @map("inspection_id")
+  itemId       String      @map("item_id")
+  result       CheckResult
+  notes        String?     @db.Text
+  /// Snapshot hasil saat P2H pertama kali disimpan (tidak berubah saat perbaikan).
+  initialResult CheckResult @default(OK) @map("initial_result")
+  /// Snapshot catatan saat P2H pertama kali disimpan.
+  initialNotes  String?     @db.Text @map("initial_notes")
+
+  inspection Inspection             @relation(fields: [inspectionId], references: [id], onDelete: Cascade)
+  item       ChecklistItem          @relation(fields: [itemId], references: [id], onDelete: Restrict)
+  repairs    InspectionLineRepair[]
+
+  @@unique([inspectionId, itemId])
+  @@index([initialResult])
+  @@map("inspection_lines")
+}
+
+/// Riwayat tindakan perbaikan per baris checklist (setelah perbaikan, hasil diperbarui ke OK).
+model InspectionLineRepair {
+  id               String   @id @default(cuid())
+  inspectionLineId String   @map("inspection_line_id")
+  reporterUserId   String?  @map("reporter_user_id")
+  reporterName     String   @map("reporter_name")
+  note             String?  @db.Text
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  line     InspectionLine @relation(fields: [inspectionLineId], references: [id], onDelete: Cascade)
+  reporter User?          @relation(fields: [reporterUserId], references: [id], onDelete: SetNull)
+
+  @@index([inspectionLineId])
+  @@index([reporterUserId])
+  @@map("inspection_line_repairs")
+}
+
+model User {
+  id          String           @id @default(cuid())
+  username    String           @unique
+  password    String
+  nik         String           @unique
+  fullname    String
+  position    String
+  roleId      String?          @map("role_id")
+  role         Role?                  @relation(fields: [roleId], references: [id], onDelete: SetNull)
+  permissions  UserPermission[]
+  lineRepairs  InspectionLineRepair[]
+
+  @@index([roleId])
+  @@map("users")
+}
+
+model Role {
+  id          String           @id @default(cuid())
+  name        String
+  slug        String           @unique
+  users       User[]
+  permissions RolePermission[]
+
+  @@map("roles")
+}
+
+model Permission {
+  id         String           @id @default(cuid())
+  key        String           @unique
+  label      String
+  roles      RolePermission[]
+  userGrants UserPermission[]
+
+  @@map("permissions")
+}
+
+/// Izin kendaraan (dan ke depan modul lain) yang diberikan langsung ke user.
+model UserPermission {
+  userId       String @map("user_id")
+  permissionId String @map("permission_id")
+
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([userId, permissionId])
+  @@map("user_permissions")
+}
+
+/// Izin yang melekat pada suatu role (banyak permission per role).
+model RolePermission {
+  roleId       String @map("role_id")
+  permissionId String @map("permission_id")
+
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+  @@map("role_permissions")
+}
