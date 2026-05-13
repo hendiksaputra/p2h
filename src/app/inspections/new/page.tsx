@@ -79,7 +79,7 @@ export default async function NewInspectionPage(props: Props) {
     <>
       <PageHeader
         title="Form P2H baru"
-        description="Pilih unit, lalu isi checklist. Untuk nomor polisi ALAT BERAT, kategori pemeriksaan otomatis mengikuti format alat berat."
+        description="Pilih unit, lalu isi checklist. Untuk nomor polisi ALAT BERAT, ditampilkan kategori standar (Eksterior, Lampu & Sinyal, dll.) dan kategori khusus alat berat."
         action={
           <Link href="/inspections" className="text-sm font-medium text-slate-600 hover:text-slate-900">
             ← Kembali

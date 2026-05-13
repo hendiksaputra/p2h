@@ -38,7 +38,10 @@ export function InspectionNewChecklistBody({ formId, vehicles, roadItems, heavyI
   );
 
   const useHeavy = normalizePlate(plate) === HEAVY_EQUIPMENT_PLATE_NORMALIZED;
-  const activeItems = useHeavy ? heavyItems : roadItems;
+  /** ALAT BERAT: kategori standar (Eksterior, dll.) + kategori khusus alat berat. */
+  const activeItems = useHeavy ? [...roadItems, ...heavyItems] : roadItems;
+  const hasRoad = roadItems.length > 0;
+  const hasHeavy = heavyItems.length > 0;
 
   const grouped = useMemo(() => {
     const m = new Map<string, ChecklistItemRow[]>();
@@ -51,7 +54,9 @@ export function InspectionNewChecklistBody({ formId, vehicles, roadItems, heavyI
   }, [activeItems]);
 
   const sortedEntries = useMemo(() => {
-    const order = useHeavy ? HEAVY_INSPECTION_CATEGORY_ORDER : CHECKLIST_CATEGORY_ORDER;
+    const order = useHeavy
+      ? ([...CHECKLIST_CATEGORY_ORDER, ...HEAVY_INSPECTION_CATEGORY_ORDER] as readonly string[])
+      : CHECKLIST_CATEGORY_ORDER;
     return sortChecklistCategoryEntries(Array.from(grouped.entries()), order);
   }, [grouped, useHeavy]);
 
@@ -60,10 +65,10 @@ export function InspectionNewChecklistBody({ formId, vehicles, roadItems, heavyI
     [activeItems],
   );
 
-  if (useHeavy && heavyItems.length === 0) {
+  if (useHeavy && !hasRoad && !hasHeavy) {
     return (
       <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-        Master checklist alat berat belum ada di database. Jalankan{" "}
+        Master checklist kosong. Jalankan{" "}
         <code className="rounded bg-amber-100 px-1">npm run db:seed</code> pada server, lalu muat ulang halaman ini.
       </div>
     );
@@ -81,10 +86,26 @@ export function InspectionNewChecklistBody({ formId, vehicles, roadItems, heavyI
   return (
     <>
       {vehicleId && useHeavy ? (
-        <p className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-2 text-sm text-slate-700">
-          Kendaraan terpilih memakai nomor polisi <strong>ALAT BERAT</strong> — checklist disesuaikan untuk alat
-          berat.
-        </p>
+        <div className="space-y-2">
+          <p className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-2 text-sm text-slate-700">
+            Kendaraan terpilih memakai nomor polisi <strong>ALAT BERAT</strong> — ditampilkan checklist{" "}
+            <strong>kendaraan standar</strong> (Eksterior, Lampu &amp; Sinyal, dll.) dan{" "}
+            <strong>kategori khusus alat berat</strong> (UNDERCARRIAGE, ATTACHMENT, dll.).
+          </p>
+          {hasRoad && !hasHeavy ? (
+            <p className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-900">
+              Master checklist khusus alat berat belum ada di database. Jalankan{" "}
+              <code className="rounded bg-amber-100 px-1">npm run db:seed</code> bila perlu bagian tersebut.
+            </p>
+          ) : null}
+          {!hasRoad && hasHeavy ? (
+            <p className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-900">
+              Master checklist kendaraan standar kosong. Jalankan{" "}
+              <code className="rounded bg-amber-100 px-1">npm run db:seed</code> untuk kategori Eksterior, Lampu
+              &amp; Sinyal, dll.
+            </p>
+          ) : null}
+        </div>
       ) : null}
 
       <div className="grid gap-6 rounded-xl bg-slate-100 p-4 sm:p-6 xl:grid-cols-2">
