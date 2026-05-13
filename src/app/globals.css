@@ -24,3 +24,15 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* Halaman cetak QR login: sembunyikan header/footer aplikasi saat print */
+@media print {
+  body[data-print-login-qr="1"] header,
+  body[data-print-login-qr="1"] footer {
+    display: none !important;
+  }
+  body[data-print-login-qr="1"] main {
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+  }
+}

@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 const items = [
   { href: "/settings/users", label: "Users" },
   { href: "/settings/roles", label: "Roles & permission" },
+  { href: "/settings/print-login-qr", label: "QR login" },
 ] as const;
 
 export function SettingsSubNav() {

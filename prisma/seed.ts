@@ -218,6 +218,9 @@ async function seedRbac() {
         "edit.p2h",
         "delete.p2h",
         "repair.p2h",
+        "read.settings",
+        "manage.users",
+        "manage.roles",
       ],
     },
     {
