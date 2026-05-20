@@ -9,10 +9,13 @@ import { inspectionListWhere } from "@/lib/inspections-query";
 import type { InspectionRoadworthiness } from "@prisma/client";
 import { ROADWORTHINESS_COPY, roadworthinessPillClass } from "@/lib/inspection-roadworthiness";
 import { DeleteInspectionButton } from "./DeleteInspectionButton";
+import { InspectionsPagination } from "./InspectionsPagination";
 import { InspectionsToolbar } from "./InspectionsToolbar";
 
+const INSPECTIONS_PAGE_SIZE = 15;
+
 type Props = {
-  searchParams: Promise<{ q?: string; err?: string; deleted?: string; edited?: string }>;
+  searchParams: Promise<{ q?: string; page?: string; err?: string; deleted?: string; edited?: string }>;
 };
 
 function DetailIcon() {
@@ -43,11 +46,14 @@ function EditIcon() {
 export default async function InspectionsPage(props: Props) {
   const {
     q: qRaw = "",
+    page: pageRaw,
     err: errRaw,
     deleted: deletedRaw,
     edited: editedRaw,
   } = await props.searchParams;
   const q = typeof qRaw === "string" ? qRaw : "";
+  const pageRequested =
+    typeof pageRaw === "string" && Number.isFinite(Number(pageRaw)) ? Math.max(1, Number(pageRaw)) : 1;
   const listError = typeof errRaw === "string" ? errRaw.trim() : "";
   const deletedOk = deletedRaw === "1" || deletedRaw === "true";
   const editedOk = editedRaw === "1" || editedRaw === "true";
@@ -65,13 +71,21 @@ export default async function InspectionsPage(props: Props) {
     plate: string;
     roadworthiness: InspectionRoadworthiness | null;
   }[] = [];
+  let totalCount = 0;
+  let page = pageRequested;
   let dbError: string | null = null;
 
   try {
+    const where = inspectionListWhere(q);
+    const total = await prisma.inspection.count({ where });
+    totalCount = total;
+    const totalPages = Math.max(1, Math.ceil(total / INSPECTIONS_PAGE_SIZE));
+    page = Math.min(pageRequested, totalPages);
     const list = await prisma.inspection.findMany({
-      where: inspectionListWhere(q),
+      where,
       orderBy: { inspectedAt: "desc" },
-      take: 200,
+      skip: (page - 1) * INSPECTIONS_PAGE_SIZE,
+      take: INSPECTIONS_PAGE_SIZE,
       include: { vehicle: { select: { plateNumber: true, unitNo: true } } },
     });
     rows = list.map((x) => ({
@@ -183,7 +197,9 @@ export default async function InspectionsPage(props: Props) {
             <tbody className="divide-y divide-slate-100">
               {rows.map((r, idx) => (
                 <tr key={r.id} className="hover:bg-slate-50/80">
-                  <td className="px-4 py-3 text-center tabular-nums text-slate-500">{idx + 1}</td>
+                  <td className="px-4 py-3 text-center tabular-nums text-slate-500">
+                    {(page - 1) * INSPECTIONS_PAGE_SIZE + idx + 1}
+                  </td>
                   <td className="px-4 py-3 text-slate-600">{formatDate(r.inspectedAt)}</td>
                   <td className="px-4 py-3 text-slate-700">
                     {(r.unitNo ?? "").trim() ? (
@@ -246,6 +262,7 @@ export default async function InspectionsPage(props: Props) {
               ))}
             </tbody>
           </table>
+          <InspectionsPagination page={page} pageSize={INSPECTIONS_PAGE_SIZE} total={totalCount} q={q} />
         </div>
       ) : null}
     </>

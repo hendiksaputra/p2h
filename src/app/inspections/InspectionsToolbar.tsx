@@ -33,6 +33,11 @@ export function InspectionsToolbar({ initialQ }: Props) {
         next.delete("q");
       }
 
+      /** Pencarian berubah — kembali ke halaman 1 (hapus `page`). */
+      if (trimmed !== currentQ) {
+        next.delete("page");
+      }
+
       const nextQs = next.toString();
       if (trimmed === currentQ && nextQs === paramsRef.current.toString()) {
         return;
