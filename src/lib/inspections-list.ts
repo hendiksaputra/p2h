@@ -60,16 +60,45 @@ export async function fetchInspectionListPage(params: {
   return { rows, total, page, pageSize, totalPages };
 }
 
+const vehicleContextSelect = { id: true, unitNo: true, plateNumber: true } as const;
+
+/** Cari kendaraan aktif by ID (cuid) atau Unit No (tepat, case-sensitive di DB). */
+export async function resolveActiveVehicleForContext(params: {
+  vehicleId?: string;
+  unitNo?: string;
+}): Promise<{ id: string; unitNo: string | null; plateNumber: string } | "ambiguous" | null> {
+  const idParam = params.vehicleId?.trim();
+  const unitParam = params.unitNo?.trim();
+
+  if (idParam) {
+    const byId = await prisma.vehicle.findFirst({
+      where: { id: idParam, isActive: true },
+      select: vehicleContextSelect,
+    });
+    if (byId) return byId;
+  }
+
+  /** Unit No eksplisit, atau fallback: nilai vehicleId yang bukan cuid (mis. VA 055). */
+  const unit = unitParam || idParam || "";
+  if (!unit) return null;
+
+  const byUnit = await prisma.vehicle.findMany({
+    where: { unitNo: unit, isActive: true },
+    select: vehicleContextSelect,
+    take: 2,
+  });
+  if (byUnit.length === 1) return byUnit[0]!;
+  if (byUnit.length > 1) return "ambiguous";
+  return null;
+}
+
 /** Unit No, nomor polisi, dan odometer terakhir dari P2H terbaru (untuk form / API unit). */
 export async function fetchInspectionVehicleContext(vehicleId: string) {
-  const vehicle = await prisma.vehicle.findFirst({
-    where: { id: vehicleId, isActive: true },
-    select: { id: true, unitNo: true, plateNumber: true },
-  });
-  if (!vehicle) return null;
+  const vehicle = await resolveActiveVehicleForContext({ vehicleId });
+  if (!vehicle || vehicle === "ambiguous") return null;
 
   const lastInspection = await prisma.inspection.findFirst({
-    where: { vehicleId },
+    where: { vehicleId: vehicle.id },
     orderBy: [{ inspectedAt: "desc" }, { id: "desc" }],
     select: { odometerKm: true, inspectedAt: true },
   });

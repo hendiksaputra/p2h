@@ -1,11 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { canAccessInspection } from "@/lib/inspection-access";
 import { getSessionUser } from "@/lib/auth-session";
-import { fetchInspectionVehicleContext } from "@/lib/inspections-list";
+import {
+  fetchInspectionVehicleContext,
+  resolveActiveVehicleForContext,
+} from "@/lib/inspections-list";
 
 /**
- * GET /api/inspections/vehicle-info?vehicleId=
- * Unit No, nomor polisi, dan odometer terakhir untuk unit terpilih (form P2H baru).
+ * GET /api/inspections/vehicle-info?vehicleId=  (ID kendaraan di database, cuid)
+ * GET /api/inspections/vehicle-info?unitNo=    (Unit No, mis. VA 055)
+ * Unit No, nomor polisi, dan odometer terakhir untuk unit terpilih.
  */
 export async function GET(request: NextRequest) {
   const session = await getSessionUser();
@@ -17,12 +21,39 @@ export async function GET(request: NextRequest) {
   }
 
   const vehicleId = (request.nextUrl.searchParams.get("vehicleId") ?? "").trim();
-  if (!vehicleId) {
-    return NextResponse.json({ error: "Parameter vehicleId wajib." }, { status: 400 });
+  const unitNo = (request.nextUrl.searchParams.get("unitNo") ?? "").trim();
+  if (!vehicleId && !unitNo) {
+    return NextResponse.json(
+      { error: "Isi salah satu: vehicleId (ID database) atau unitNo (mis. VA 055)." },
+      { status: 400 },
+    );
   }
 
   try {
-    const ctx = await fetchInspectionVehicleContext(vehicleId);
+    const resolved = await resolveActiveVehicleForContext({ vehicleId, unitNo });
+    if (resolved === "ambiguous") {
+      return NextResponse.json(
+        {
+          error:
+            "Lebih dari satu kendaraan aktif dengan Unit No tersebut. Gunakan parameter vehicleId (ID database).",
+        },
+        { status: 409 },
+      );
+    }
+    if (!resolved) {
+      return NextResponse.json(
+        {
+          error: "Kendaraan tidak ditemukan atau tidak aktif.",
+          hint:
+            vehicleId && !unitNo
+              ? "vehicleId harus ID database (bukan Unit No). Coba ?unitNo=... atau lihat vehicleId di GET /api/inspections."
+              : "Periksa ejaan Unit No (harus sama persis dengan data di sistem).",
+        },
+        { status: 404 },
+      );
+    }
+
+    const ctx = await fetchInspectionVehicleContext(resolved.id);
     if (!ctx) {
       return NextResponse.json({ error: "Kendaraan tidak ditemukan atau tidak aktif." }, { status: 404 });
     }
