@@ -4,15 +4,16 @@ import { DbUnavailable } from "@/components/DbUnavailable";
 import { PageHeader } from "@/components/PageHeader";
 import { canAccessInspection } from "@/lib/inspection-access";
 import { getDbErrorMessage } from "@/lib/db-error";
-import { prisma } from "@/lib/db";
-import { inspectionListWhere } from "@/lib/inspections-query";
-import type { InspectionRoadworthiness } from "@prisma/client";
+import {
+  fetchInspectionListPage,
+  INSPECTIONS_LIST_PAGE_SIZE,
+  parseInspectionListPage,
+  type InspectionListRow,
+} from "@/lib/inspections-list";
 import { ROADWORTHINESS_COPY, roadworthinessPillClass } from "@/lib/inspection-roadworthiness";
 import { DeleteInspectionButton } from "./DeleteInspectionButton";
 import { InspectionsPagination } from "./InspectionsPagination";
 import { InspectionsToolbar } from "./InspectionsToolbar";
-
-const INSPECTIONS_PAGE_SIZE = 15;
 
 type Props = {
   searchParams: Promise<{ q?: string; page?: string; err?: string; deleted?: string; edited?: string }>;
@@ -52,8 +53,7 @@ export default async function InspectionsPage(props: Props) {
     edited: editedRaw,
   } = await props.searchParams;
   const q = typeof qRaw === "string" ? qRaw : "";
-  const pageRequested =
-    typeof pageRaw === "string" && Number.isFinite(Number(pageRaw)) ? Math.max(1, Number(pageRaw)) : 1;
+  const pageRequested = parseInspectionListPage(typeof pageRaw === "string" ? pageRaw : undefined);
   const listError = typeof errRaw === "string" ? errRaw.trim() : "";
   const deletedOk = deletedRaw === "1" || deletedRaw === "true";
   const editedOk = editedRaw === "1" || editedRaw === "true";
@@ -62,41 +62,16 @@ export default async function InspectionsPage(props: Props) {
   const canEdit = await canAccessInspection("edit.p2h");
   const canDelete = await canAccessInspection("delete.p2h");
 
-  let rows: {
-    id: string;
-    inspectedAt: Date;
-    inspectorName: string;
-    status: string;
-    unitNo: string | null;
-    plate: string;
-    roadworthiness: InspectionRoadworthiness | null;
-  }[] = [];
+  let rows: InspectionListRow[] = [];
   let totalCount = 0;
   let page = pageRequested;
   let dbError: string | null = null;
 
   try {
-    const where = inspectionListWhere(q);
-    const total = await prisma.inspection.count({ where });
-    totalCount = total;
-    const totalPages = Math.max(1, Math.ceil(total / INSPECTIONS_PAGE_SIZE));
-    page = Math.min(pageRequested, totalPages);
-    const list = await prisma.inspection.findMany({
-      where,
-      orderBy: { inspectedAt: "desc" },
-      skip: (page - 1) * INSPECTIONS_PAGE_SIZE,
-      take: INSPECTIONS_PAGE_SIZE,
-      include: { vehicle: { select: { plateNumber: true, unitNo: true } } },
-    });
-    rows = list.map((x) => ({
-      id: x.id,
-      inspectedAt: x.inspectedAt,
-      inspectorName: x.inspectorName,
-      status: x.status,
-      unitNo: x.vehicle.unitNo,
-      plate: x.vehicle.plateNumber,
-      roadworthiness: x.roadworthiness,
-    }));
+    const result = await fetchInspectionListPage({ q, page: pageRequested });
+    rows = result.rows;
+    totalCount = result.total;
+    page = result.page;
   } catch (e) {
     dbError = getDbErrorMessage(e) ?? "Gagal memuat P2H.";
   }
@@ -187,6 +162,7 @@ export default async function InspectionsPage(props: Props) {
                 <th className="w-14 px-4 py-3 text-center">No</th>
                 <th className="px-4 py-3">Tanggal</th>
                 <th className="px-4 py-3">Unit No</th>
+                <th className="px-4 py-3">Odometer</th>
                 <th className="px-4 py-3">Kendaraan</th>
                 <th className="px-4 py-3">Pemeriksa</th>
                 <th className="px-4 py-3">Status</th>
@@ -198,7 +174,7 @@ export default async function InspectionsPage(props: Props) {
               {rows.map((r, idx) => (
                 <tr key={r.id} className="hover:bg-slate-50/80">
                   <td className="px-4 py-3 text-center tabular-nums text-slate-500">
-                    {(page - 1) * INSPECTIONS_PAGE_SIZE + idx + 1}
+                    {(page - 1) * INSPECTIONS_LIST_PAGE_SIZE + idx + 1}
                   </td>
                   <td className="px-4 py-3 text-slate-600">{formatDate(r.inspectedAt)}</td>
                   <td className="px-4 py-3 text-slate-700">
@@ -208,7 +184,10 @@ export default async function InspectionsPage(props: Props) {
                       <span className="text-slate-400">—</span>
                     )}
                   </td>
-                  <td className="px-4 py-3 font-medium text-slate-900">{r.plate}</td>
+                  <td className="px-4 py-3 tabular-nums text-slate-600">
+                    {formatOdometerKm(r.odometerKm)}
+                  </td>
+                  <td className="px-4 py-3 font-medium text-slate-900">{r.plateNumber}</td>
                   <td className="px-4 py-3 text-slate-600">{r.inspectorName}</td>
                   <td className="px-4 py-3">
                     <span
@@ -241,7 +220,7 @@ export default async function InspectionsPage(props: Props) {
                         href={`/inspections/${r.id}`}
                         className="inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white p-2 text-slate-600 shadow-sm transition-colors hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700"
                         title="Detail"
-                        aria-label={`Detail P2H ${r.plate}`}
+                        aria-label={`Detail P2H ${r.plateNumber}`}
                       >
                         <DetailIcon />
                       </Link>
@@ -250,19 +229,21 @@ export default async function InspectionsPage(props: Props) {
                           href={`/inspections/${r.id}/edit`}
                           className="inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white p-2 text-slate-600 shadow-sm transition-colors hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-800"
                           title="Edit P2H"
-                          aria-label={`Edit P2H ${r.plate}`}
+                          aria-label={`Edit P2H ${r.plateNumber}`}
                         >
                           <EditIcon />
                         </Link>
                       ) : null}
-                      {canDelete ? <DeleteInspectionButton inspectionId={r.id} plateLabel={r.plate} /> : null}
+                      {canDelete ? (
+                        <DeleteInspectionButton inspectionId={r.id} plateLabel={r.plateNumber} />
+                      ) : null}
                     </div>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
-          <InspectionsPagination page={page} pageSize={INSPECTIONS_PAGE_SIZE} total={totalCount} q={q} />
+          <InspectionsPagination page={page} pageSize={INSPECTIONS_LIST_PAGE_SIZE} total={totalCount} q={q} />
         </div>
       ) : null}
     </>
@@ -275,4 +256,9 @@ function formatDate(d: Date) {
     timeStyle: "short",
     timeZone: "Asia/Makassar",
   }).format(d);
+}
+
+function formatOdometerKm(km: number | null) {
+  if (km == null) return "—";
+  return `${km.toLocaleString("id-ID")} km`;
 }
