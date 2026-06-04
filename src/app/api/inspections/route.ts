@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { canAccessInspection } from "@/lib/inspection-access";
-import { getSessionUser } from "@/lib/auth-session";
+import { authorizeInspectionApiRead } from "@/lib/inspection-api-auth";
 import {
   fetchInspectionListPage,
   INSPECTIONS_LIST_PAGE_SIZE,
@@ -8,11 +7,13 @@ import {
 } from "@/lib/inspections-list";
 
 function serializeRow(row: Awaited<ReturnType<typeof fetchInspectionListPage>>["rows"][number]) {
+  const km = row.odometerKm;
   return {
     id: row.id,
     unitNo: (row.unitNo ?? "").trim() || null,
     plateNumber: row.plateNumber,
-    odometerKm: row.odometerKm,
+    odometerKm: km,
+    lastOdometerKm: km,
     inspectedAt: row.inspectedAt.toISOString(),
     inspectorName: row.inspectorName,
     status: row.status,
@@ -22,15 +23,13 @@ function serializeRow(row: Awaited<ReturnType<typeof fetchInspectionListPage>>["
 
 /**
  * GET /api/inspections?q=&page=
- * Daftar P2H dengan Unit No dan odometer (paginasi, filter pencarian sama halaman /inspections).
+ * Daftar P2H dengan Unit No dan odometer.
+ * Auth: cookie sesi web ATAU API key (Bearer / X-API-Key, env P2H_API_KEY).
  */
 export async function GET(request: NextRequest) {
-  const session = await getSessionUser();
-  if (!session) {
-    return NextResponse.json({ error: "Tidak diizinkan." }, { status: 401 });
-  }
-  if (!(await canAccessInspection("detail.p2h"))) {
-    return NextResponse.json({ error: "Anda tidak memiliki izin melihat data P2H." }, { status: 403 });
+  const auth = await authorizeInspectionApiRead(request);
+  if (!auth.ok) {
+    return NextResponse.json({ error: auth.error }, { status: auth.status });
   }
 
   const { searchParams } = request.nextUrl;

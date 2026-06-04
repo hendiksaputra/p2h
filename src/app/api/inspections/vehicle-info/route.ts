@@ -1,23 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
-import { canAccessInspection } from "@/lib/inspection-access";
-import { getSessionUser } from "@/lib/auth-session";
+import { authorizeInspectionApiRead } from "@/lib/inspection-api-auth";
 import {
   fetchInspectionVehicleContext,
   resolveActiveVehicleForContext,
+  serializeVehicleOdometer,
 } from "@/lib/inspections-list";
 
 /**
  * GET /api/inspections/vehicle-info?vehicleId=  (ID kendaraan di database, cuid)
  * GET /api/inspections/vehicle-info?unitNo=    (Unit No, mis. VA 055)
  * Unit No, nomor polisi, dan odometer terakhir untuk unit terpilih.
+ * Auth: cookie sesi web ATAU API key (env P2H_API_KEY).
  */
 export async function GET(request: NextRequest) {
-  const session = await getSessionUser();
-  if (!session) {
-    return NextResponse.json({ error: "Tidak diizinkan." }, { status: 401 });
-  }
-  if (!(await canAccessInspection("create.p2h")) && !(await canAccessInspection("detail.p2h"))) {
-    return NextResponse.json({ error: "Anda tidak memiliki izin." }, { status: 403 });
+  const auth = await authorizeInspectionApiRead(request);
+  if (!auth.ok) {
+    return NextResponse.json({ error: auth.error }, { status: auth.status });
   }
 
   const vehicleId = (request.nextUrl.searchParams.get("vehicleId") ?? "").trim();
@@ -58,13 +56,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Kendaraan tidak ditemukan atau tidak aktif." }, { status: 404 });
     }
 
-    return NextResponse.json({
-      vehicleId: ctx.vehicleId,
-      unitNo: (ctx.unitNo ?? "").trim() || null,
-      plateNumber: ctx.plateNumber,
-      lastOdometerKm: ctx.lastOdometerKm,
-      lastOdometerAt: ctx.lastOdometerAt?.toISOString() ?? null,
-    });
+    return NextResponse.json(serializeVehicleOdometer(ctx));
   } catch {
     return NextResponse.json({ error: "Gagal memuat data unit." }, { status: 500 });
   }

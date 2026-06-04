@@ -111,3 +111,63 @@ export async function fetchInspectionVehicleContext(vehicleId: string) {
     lastOdometerAt: lastInspection?.inspectedAt ?? null,
   };
 }
+
+export type VehicleOdometerRow = {
+  vehicleId: string;
+  unitNo: string | null;
+  plateNumber: string;
+  lastOdometerKm: number | null;
+  lastOdometerAt: Date | null;
+};
+
+/** JSON API: odometerKm = nilai utama (dari P2H terakhir); lastOdometerKm alias kompatibilitas. */
+export function serializeVehicleOdometer(row: VehicleOdometerRow) {
+  const km = row.lastOdometerKm;
+  const at = row.lastOdometerAt?.toISOString() ?? null;
+  return {
+    vehicleId: row.vehicleId,
+    unitNo: (row.unitNo ?? "").trim() || null,
+    plateNumber: row.plateNumber,
+    odometerKm: km,
+    lastOdometerKm: km,
+    odometerRecordedAt: at,
+    lastOdometerAt: at,
+  };
+}
+
+/** Odometer terakhir (dari P2H terbaru) untuk semua kendaraan aktif. */
+export async function fetchAllVehiclesOdometer(q = ""): Promise<VehicleOdometerRow[]> {
+  const t = q.trim();
+  const vehicles = await prisma.vehicle.findMany({
+    where: {
+      isActive: true,
+      ...(t
+        ? {
+            OR: [{ unitNo: { contains: t } }, { plateNumber: { contains: t } }],
+          }
+        : {}),
+    },
+    orderBy: [{ unitNo: "asc" }, { plateNumber: "asc" }],
+    select: {
+      id: true,
+      unitNo: true,
+      plateNumber: true,
+      inspections: {
+        orderBy: [{ inspectedAt: "desc" }, { id: "desc" }],
+        take: 1,
+        select: { odometerKm: true, inspectedAt: true },
+      },
+    },
+  });
+
+  return vehicles.map((v) => {
+    const last = v.inspections[0];
+    return {
+      vehicleId: v.id,
+      unitNo: v.unitNo,
+      plateNumber: v.plateNumber,
+      lastOdometerKm: last?.odometerKm ?? null,
+      lastOdometerAt: last?.inspectedAt ?? null,
+    };
+  });
+}
