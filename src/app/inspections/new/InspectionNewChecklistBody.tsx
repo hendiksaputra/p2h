@@ -178,47 +178,73 @@ export function InspectionNewChecklistBody({
         </div>
       ) : null}
 
-      <div className="grid gap-6 rounded-xl bg-slate-100 p-4 sm:p-6 xl:grid-cols-2">
-        {sortedEntries.map(([category, list]) => (
-          <section key={category} className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-            <div className="border-b border-slate-100 px-5 py-4">
-              <ChecklistCategoryHeader category={category} />
-            </div>
-            <ul className="divide-y divide-slate-100">
-              {list.map((item) => (
-                <li key={item.id} className="px-5 py-4">
-                  <input type="hidden" name="itemId" value={item.id} />
-                  <p className="text-sm font-bold text-slate-900">{item.label}</p>
-                  {item.description ? (
-                    <p className="mt-0.5 text-sm text-slate-500">{item.description}</p>
-                  ) : null}
-                  <div className="mt-3 flex flex-wrap gap-4 text-sm">
-                    <label className="inline-flex items-center gap-2">
-                      <input type="radio" name={`result_${item.id}`} value="OK" required />
-                      <span>OK</span>
+      <div
+        className={[
+          "rounded-xl bg-slate-100 p-4 sm:p-6",
+          useLight || useCrane ? "grid gap-6" : "grid gap-6 xl:grid-cols-2",
+        ].join(" ")}
+      >
+        {sortedEntries.map(([category, list]) => {
+          const twoColumnItems = useLight || useCrane;
+          return (
+            <section
+              key={category}
+              className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm"
+            >
+              <div className="border-b border-slate-100 px-5 py-4">
+                <ChecklistCategoryHeader category={category} />
+              </div>
+              <ul
+                className={
+                  twoColumnItems
+                    ? "grid md:grid-cols-2 md:divide-x md:divide-slate-100"
+                    : "divide-y divide-slate-100"
+                }
+              >
+                {list.map((item) => (
+                  <li
+                    key={item.id}
+                    className={[
+                      "px-5 py-4",
+                      twoColumnItems ? "border-b border-slate-100" : "",
+                    ].join(" ")}
+                  >
+                    <input type="hidden" name="itemId" value={item.id} />
+                    <p className="text-sm font-bold text-slate-900">{item.label}</p>
+                    {item.description ? (
+                      <p className="mt-0.5 text-sm text-slate-500">{item.description}</p>
+                    ) : null}
+                    <div className="mt-3 flex flex-wrap gap-4 text-sm">
+                      <label className="inline-flex items-center gap-2">
+                        <input type="radio" name={`result_${item.id}`} value="OK" required />
+                        <span>OK</span>
+                      </label>
+                      <label className="inline-flex items-center gap-2">
+                        <input type="radio" name={`result_${item.id}`} value="NOT_OK" />
+                        <span>{NON_COMPLIANT_LABEL}</span>
+                      </label>
+                      <label className="inline-flex items-center gap-2">
+                        <input type="radio" name={`result_${item.id}`} value="NA" />
+                        <span>Tidak berlaku</span>
+                      </label>
+                    </div>
+                    <label
+                      className="mt-2 block text-xs font-medium text-slate-500"
+                      htmlFor={`notes_${item.id}`}
+                    >
+                      Catatan poin
                     </label>
-                    <label className="inline-flex items-center gap-2">
-                      <input type="radio" name={`result_${item.id}`} value="NOT_OK" />
-                      <span>{NON_COMPLIANT_LABEL}</span>
-                    </label>
-                    <label className="inline-flex items-center gap-2">
-                      <input type="radio" name={`result_${item.id}`} value="NA" />
-                      <span>Tidak berlaku</span>
-                    </label>
-                  </div>
-                  <label className="mt-2 block text-xs font-medium text-slate-500" htmlFor={`notes_${item.id}`}>
-                    Catatan poin
-                  </label>
-                  <input
-                    id={`notes_${item.id}`}
-                    name={`notes_${item.id}`}
-                    className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-1.5 text-sm"
-                  />
-                </li>
-              ))}
-            </ul>
-          </section>
-        ))}
+                    <input
+                      id={`notes_${item.id}`}
+                      name={`notes_${item.id}`}
+                      className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-1.5 text-sm"
+                    />
+                  </li>
+                ))}
+              </ul>
+            </section>
+          );
+        })}
       </div>
 
       <UnitRoadworthinessSummary formId={formId} checklistItems={checklistForSummary} />
