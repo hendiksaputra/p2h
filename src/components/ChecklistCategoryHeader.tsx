@@ -1,4 +1,5 @@
 import { HEAVY_INSPECTION_CATEGORY_HEADER } from "@/lib/heavy-equipment-inspection";
+import { LIGHT_VEHICLE_INSPECTION_CATEGORY_HEADER } from "@/lib/light-vehicle-inspection";
 
 type Props = { category: string };
 
@@ -60,6 +61,8 @@ function iconForCategory(category: string) {
     case "CYLINDER":
     case "VESSEL":
       return <IconWrench className={ICON_CLASS} />;
+    case "LIGHT VEHICLE":
+      return <IconCar className={ICON_CLASS} />;
     case "Eksterior":
       return <IconCar className={ICON_CLASS} />;
     case "Lampu & Sinyal":
@@ -98,20 +101,22 @@ export function sortChecklistCategoryEntries<T>(
 
 export function ChecklistCategoryHeader({ category }: Props) {
   const heavy = HEAVY_INSPECTION_CATEGORY_HEADER[category];
+  const light = LIGHT_VEHICLE_INSPECTION_CATEGORY_HEADER[category];
+  const special = heavy ?? light;
   return (
     <div className="flex items-start gap-3">
       {iconForCategory(category)}
       <div className="min-w-0">
         <h2 className="text-base font-bold text-slate-900">
-          {heavy ? (
+          {special ? (
             <>
-              <span className="font-semibold text-slate-600">{heavy.index}.</span> {heavy.title}
+              <span className="font-semibold text-slate-600">{special.index}.</span> {special.title}
             </>
           ) : (
             category
           )}
         </h2>
-        {heavy ? <p className="mt-1 text-sm font-normal text-slate-600">{heavy.subtitle}</p> : null}
+        {special ? <p className="mt-1 text-sm font-normal text-slate-600">{special.subtitle}</p> : null}
       </div>
     </div>
   );

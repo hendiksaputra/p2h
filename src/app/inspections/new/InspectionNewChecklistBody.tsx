@@ -3,6 +3,10 @@
 import { useMemo } from "react";
 import { ChecklistCategoryHeader, CHECKLIST_CATEGORY_ORDER, sortChecklistCategoryEntries } from "@/components/ChecklistCategoryHeader";
 import { HEAVY_INSPECTION_CATEGORY_ORDER } from "@/lib/heavy-equipment-inspection";
+import {
+  isLightVehicleType,
+  LIGHT_VEHICLE_INSPECTION_CATEGORY_ORDER,
+} from "@/lib/light-vehicle-inspection";
 import { NON_COMPLIANT_LABEL } from "@/lib/inspection-roadworthiness";
 import { HEAVY_EQUIPMENT_PLATE_NORMALIZED } from "@/lib/vehicle-validation";
 import { useInspectionNewVehicle } from "./InspectionNewVehicleContext";
@@ -16,7 +20,7 @@ export type ChecklistItemRow = {
   sortOrder: number;
 };
 
-type VehicleRef = { id: string; plateNumber: string };
+type VehicleRef = { id: string; plateNumber: string; vehicleType: string | null };
 
 function normalizePlate(s: string): string {
   return s.trim().toUpperCase().replace(/\s+/g, " ");
@@ -27,21 +31,37 @@ type Props = {
   vehicles: VehicleRef[];
   roadItems: ChecklistItemRow[];
   heavyItems: ChecklistItemRow[];
+  lightItems: ChecklistItemRow[];
 };
 
-export function InspectionNewChecklistBody({ formId, vehicles, roadItems, heavyItems }: Props) {
+export function InspectionNewChecklistBody({
+  formId,
+  vehicles,
+  roadItems,
+  heavyItems,
+  lightItems,
+}: Props) {
   const { vehicleId } = useInspectionNewVehicle();
 
-  const plate = useMemo(
-    () => vehicles.find((v) => v.id === vehicleId)?.plateNumber ?? "",
+  const selected = useMemo(
+    () => vehicles.find((v) => v.id === vehicleId) ?? null,
     [vehicles, vehicleId],
   );
 
+  const plate = selected?.plateNumber ?? "";
   const useHeavy = normalizePlate(plate) === HEAVY_EQUIPMENT_PLATE_NORMALIZED;
-  /** ALAT BERAT: kategori standar (Eksterior, dll.) + kategori khusus alat berat. */
-  const activeItems = useHeavy ? [...roadItems, ...heavyItems] : roadItems;
+  const useLight = !useHeavy && isLightVehicleType(selected?.vehicleType);
+
+  /** ALAT BERAT: standar + alat berat. LIGHT VEHICLE: hanya checklist light vehicle. Lainnya: standar. */
+  const activeItems = useHeavy
+    ? [...roadItems, ...heavyItems]
+    : useLight
+      ? lightItems
+      : roadItems;
+
   const hasRoad = roadItems.length > 0;
   const hasHeavy = heavyItems.length > 0;
+  const hasLight = lightItems.length > 0;
 
   const grouped = useMemo(() => {
     const m = new Map<string, ChecklistItemRow[]>();
@@ -56,14 +76,25 @@ export function InspectionNewChecklistBody({ formId, vehicles, roadItems, heavyI
   const sortedEntries = useMemo(() => {
     const order = useHeavy
       ? ([...CHECKLIST_CATEGORY_ORDER, ...HEAVY_INSPECTION_CATEGORY_ORDER] as readonly string[])
-      : CHECKLIST_CATEGORY_ORDER;
+      : useLight
+        ? LIGHT_VEHICLE_INSPECTION_CATEGORY_ORDER
+        : CHECKLIST_CATEGORY_ORDER;
     return sortChecklistCategoryEntries(Array.from(grouped.entries()), order);
-  }, [grouped, useHeavy]);
+  }, [grouped, useHeavy, useLight]);
 
   const checklistForSummary = useMemo(
     () => activeItems.map((i) => ({ id: i.id, label: i.label, category: i.category })),
     [activeItems],
   );
+
+  if (useLight && !hasLight) {
+    return (
+      <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+        Master checklist <strong>LIGHT VEHICLE</strong> belum ada di database. Jalankan{" "}
+        <code className="rounded bg-amber-100 px-1">npm run db:seed</code>, lalu muat ulang halaman ini.
+      </div>
+    );
+  }
 
   if (useHeavy && !hasRoad && !hasHeavy) {
     return (
@@ -74,7 +105,7 @@ export function InspectionNewChecklistBody({ formId, vehicles, roadItems, heavyI
     );
   }
 
-  if (!useHeavy && roadItems.length === 0) {
+  if (!useHeavy && !useLight && roadItems.length === 0) {
     return (
       <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
         Master checklist kendaraan jalan kosong. Jalankan{" "}
@@ -85,6 +116,13 @@ export function InspectionNewChecklistBody({ formId, vehicles, roadItems, heavyI
 
   return (
     <>
+      {vehicleId && useLight ? (
+        <p className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-2 text-sm text-slate-700">
+          Jenis kendaraan <strong>LIGHT VEHICLE</strong> — checklist mengikuti form pemeriksaan light vehicle
+          (lampu, wiper, rem parkir, sabuk, indikator, ban, cairan, sakelar, coolant).
+        </p>
+      ) : null}
+
       {vehicleId && useHeavy ? (
         <div className="space-y-2">
           <p className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-2 text-sm text-slate-700">

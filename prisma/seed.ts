@@ -107,6 +107,69 @@ const heavyEquipmentChecklistCatalog: {
   },
 ];
 
+/** Checklist P2H untuk jenis kendaraan LIGHT VEHICLE (sesuai form operasional). */
+const lightVehicleChecklistCatalog: {
+  category: string;
+  label: string;
+  description: string;
+  sortOrder: number;
+}[] = [
+  {
+    category: "LIGHT VEHICLE",
+    label: "Periksa semua lampu exterior, klakson, lampu sein",
+    description: "Semua lampu eksterior, klakson, dan lampu sein berfungsi.",
+    sortOrder: 900,
+  },
+  {
+    category: "LIGHT VEHICLE",
+    label: "Periksa wiper dan washer kaca depan",
+    description: "Wiper dan washer kaca depan berfungsi.",
+    sortOrder: 910,
+  },
+  {
+    category: "LIGHT VEHICLE",
+    label: "Periksa rem parkir",
+    description: "Rem parkir berfungsi dengan baik.",
+    sortOrder: 920,
+  },
+  {
+    category: "LIGHT VEHICLE",
+    label: "Periksa sabuk pengaman",
+    description: "Sabuk pengaman terkunci dan terlepas dengan baik.",
+    sortOrder: 930,
+  },
+  {
+    category: "LIGHT VEHICLE",
+    label: "Periksa indikator panel instrumen yang menyala secara abnormal",
+    description: "Tidak ada indikator panel instrumen yang menyala abnormal.",
+    sortOrder: 940,
+  },
+  {
+    category: "LIGHT VEHICLE",
+    label: "Periksa tekanan angin setiap tyre dan juga kerusakannya",
+    description: "Tekanan angin tiap ban sesuai; tidak ada kerusakan pada tyre.",
+    sortOrder: 950,
+  },
+  {
+    category: "LIGHT VEHICLE",
+    label: "Periksa level cairan pembersih kaca",
+    description: "Level cairan pembersih kaca memadai.",
+    sortOrder: 960,
+  },
+  {
+    category: "LIGHT VEHICLE",
+    label: "Periksa apakah setiap sakelar berfungsi dengan baik",
+    description: "Semua sakelar di kabin berfungsi dengan baik.",
+    sortOrder: 970,
+  },
+  {
+    category: "LIGHT VEHICLE",
+    label: "Periksa cairan coolant",
+    description: "Level cairan coolant memadai; tidak ada kebocoran mencolok.",
+    sortOrder: 980,
+  },
+];
+
 /** Kategori master lama — seluruh poin di dalamnya dinonaktifkan (data tetap ada untuk riwayat P2H). */
 const REMOVED_CHECKLIST_CATEGORIES = [
   "Ban & roda",
@@ -119,7 +182,11 @@ const REMOVED_CHECKLIST_CATEGORIES = [
 ] as const;
 
 async function seedChecklistCatalog() {
-  const combinedCatalog = [...checklistCatalog, ...heavyEquipmentChecklistCatalog];
+  const combinedCatalog = [
+    ...checklistCatalog,
+    ...heavyEquipmentChecklistCatalog,
+    ...lightVehicleChecklistCatalog,
+  ];
   const catalogKeys = new Set(combinedCatalog.map((x) => `${x.category}::${x.label}`));
 
   for (const row of combinedCatalog) {
@@ -163,7 +230,7 @@ async function seedChecklistCatalog() {
   });
 
   console.log(
-    `Seed checklist: ${combinedCatalog.length} poin aktif (${checklistCatalog.length} jalan + ${heavyEquipmentChecklistCatalog.length} alat berat); ${deactivated} poin di luar katalog dinonaktifkan; ${legacyOff.count} baris pada kategori lama dipastikan nonaktif.`,
+    `Seed checklist: ${combinedCatalog.length} poin aktif (${checklistCatalog.length} jalan + ${heavyEquipmentChecklistCatalog.length} alat berat + ${lightVehicleChecklistCatalog.length} light vehicle); ${deactivated} poin di luar katalog dinonaktifkan; ${legacyOff.count} baris pada kategori lama dipastikan nonaktif.`,
   );
 }
 

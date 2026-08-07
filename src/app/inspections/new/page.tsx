@@ -6,6 +6,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { getSessionUser } from "@/lib/auth-session";
 import { getDbErrorMessage } from "@/lib/db-error";
 import { isHeavyEquipmentInspectionCategory } from "@/lib/heavy-equipment-inspection";
+import { isLightVehicleInspectionCategory } from "@/lib/light-vehicle-inspection";
 import { canAccessInspection } from "@/lib/inspection-access";
 import { getLatestInspectionSnapshotByVehicleId } from "@/lib/inspections-query";
 import { prisma } from "@/lib/db";
@@ -23,7 +24,7 @@ export default async function NewInspectionPage(props: Props) {
 
   const { error: errorParam } = await props.searchParams;
   const formError = errorParam?.trim() || null;
-  let vehicles: { id: string; plateNumber: string; unitNo: string | null }[] = [];
+  let vehicles: { id: string; plateNumber: string; unitNo: string | null; vehicleType: string | null }[] = [];
   let items: { id: string; category: string; label: string; description: string | null; sortOrder: number }[] =
     [];
   let inspectedTodayIds: string[] = [];
@@ -46,7 +47,7 @@ export default async function NewInspectionPage(props: Props) {
       prisma.vehicle.findMany({
         where: { isActive: true },
         orderBy: { plateNumber: "asc" },
-        select: { id: true, plateNumber: true, unitNo: true },
+        select: { id: true, plateNumber: true, unitNo: true, vehicleType: true },
       }),
       prisma.checklistItem.findMany({
         where: { isActive: true },
@@ -71,15 +72,18 @@ export default async function NewInspectionPage(props: Props) {
     dbError = getDbErrorMessage(e) ?? "Gagal memuat data untuk formulir P2H.";
   }
 
-  const roadItems = items.filter((i) => !isHeavyEquipmentInspectionCategory(i.category));
+  const roadItems = items.filter(
+    (i) => !isHeavyEquipmentInspectionCategory(i.category) && !isLightVehicleInspectionCategory(i.category),
+  );
   const heavyItems = items.filter((i) => isHeavyEquipmentInspectionCategory(i.category));
-  const hasAnyChecklist = roadItems.length > 0 || heavyItems.length > 0;
+  const lightItems = items.filter((i) => isLightVehicleInspectionCategory(i.category));
+  const hasAnyChecklist = roadItems.length > 0 || heavyItems.length > 0 || lightItems.length > 0;
 
   return (
     <>
       <PageHeader
         title="Form P2H baru"
-        description="Pilih unit, lalu isi checklist. Untuk nomor polisi ALAT BERAT, ditampilkan kategori standar (Eksterior, Lampu & Sinyal, dll.) dan kategori khusus alat berat."
+        description="Pilih unit, lalu isi checklist. ALAT BERAT memakai checklist standar + alat berat; jenis LIGHT VEHICLE memakai checklist light vehicle."
         action={
           <Link href="/inspections" className="text-sm font-medium text-slate-600 hover:text-slate-900">
             ← Kembali
@@ -198,6 +202,7 @@ export default async function NewInspectionPage(props: Props) {
             vehicles={vehicles}
             roadItems={roadItems}
             heavyItems={heavyItems}
+            lightItems={lightItems}
           />
 
           <InspectionNewSubmitRow />
