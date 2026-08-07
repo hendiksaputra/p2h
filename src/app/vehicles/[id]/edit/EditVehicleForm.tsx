@@ -83,7 +83,7 @@ export function EditVehicleForm({ vehicle, initialFormError }: Props) {
         <Field
           label="Jenis kendaraan"
           name="vehicleType"
-          placeholder="Truk / pickup / LIGHT VEHICLE"
+          placeholder="LIGHT VEHICLE / OVER HEAD CRANE / GANTRY CRANE"
           defaultValue={vehicle.vehicleType}
           error={state.errors?.vehicleType}
         />

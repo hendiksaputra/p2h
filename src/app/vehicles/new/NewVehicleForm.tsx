@@ -50,7 +50,7 @@ export function NewVehicleForm({ initialFormError }: Props) {
         <Field
           label="Jenis kendaraan"
           name="vehicleType"
-          placeholder="Truk / pickup / LIGHT VEHICLE"
+          placeholder="LIGHT VEHICLE / OVER HEAD CRANE / GANTRY CRANE"
           error={state.errors?.vehicleType}
         />
         <Field

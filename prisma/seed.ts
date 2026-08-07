@@ -170,6 +170,87 @@ const lightVehicleChecklistCatalog: {
   },
 ];
 
+/** Checklist P2H untuk OVER HEAD CRANE & GANTRY CRANE (satu master kategori CRANE). */
+const craneChecklistCatalog: {
+  category: string;
+  label: string;
+  description: string;
+  sortOrder: number;
+}[] = [
+  {
+    category: "CRANE",
+    label: "Penggunaan pengangkatan beban dipertahankan di bawah SWL",
+    description: "Beban angkat selalu di bawah Safe Working Load (SWL).",
+    sortOrder: 1000,
+  },
+  {
+    category: "CRANE",
+    label: "Semua bagian yang bergerak & bagian listrik diberi pelindung",
+    description: "Bagian bergerak dan bagian listrik terlindungi dengan baik.",
+    sortOrder: 1010,
+  },
+  {
+    category: "CRANE",
+    label: "Semua switch & tombol berfungsi dengan baik dan akurat",
+    description: "Switch dan tombol kontrol berfungsi akurat.",
+    sortOrder: 1020,
+  },
+  {
+    category: "CRANE",
+    label: "Instalasi electricalnya terpasang dengan baik",
+    description: "Instalasi listrik terpasang rapi dan aman.",
+    sortOrder: 1030,
+  },
+  {
+    category: "CRANE",
+    label: "Roll atau track hoist crane dalam kondisi baik",
+    description: "Roll / track hoist crane tidak rusak atau aus berlebih.",
+    sortOrder: 1040,
+  },
+  {
+    category: "CRANE",
+    label: "Motor penggerak hoist crane berfungsi dengan normal",
+    description: "Motor hoist beroperasi normal tanpa suara/getaran abnormal.",
+    sortOrder: 1050,
+  },
+  {
+    category: "CRANE",
+    label: "Kondisi sling",
+    description: "Sling dalam kondisi baik (tidak putus, aus, atau cacat).",
+    sortOrder: 1060,
+  },
+  {
+    category: "CRANE",
+    label: "Kondisi putaran hook",
+    description: "Hook berputar/bergerak dengan lancar sesuai fungsi.",
+    sortOrder: 1070,
+  },
+  {
+    category: "CRANE",
+    label: "Kondisi boom crane",
+    description: "Boom crane dalam kondisi baik (bila berlaku).",
+    sortOrder: 1080,
+  },
+  {
+    category: "CRANE",
+    label: "Emergency shutdown (ESD)",
+    description: "Tombol / sistem emergency shutdown berfungsi.",
+    sortOrder: 1090,
+  },
+  {
+    category: "CRANE",
+    label: "Beban indicator terpasang / SWL",
+    description: "Indikator beban terpasang dan menampilkan SWL dengan benar.",
+    sortOrder: 1100,
+  },
+  {
+    category: "CRANE",
+    label: "Safety latch terpasang di Hook crane",
+    description: "Safety latch pada hook crane terpasang dan berfungsi.",
+    sortOrder: 1110,
+  },
+];
+
 /** Kategori master lama — seluruh poin di dalamnya dinonaktifkan (data tetap ada untuk riwayat P2H). */
 const REMOVED_CHECKLIST_CATEGORIES = [
   "Ban & roda",
@@ -186,6 +267,7 @@ async function seedChecklistCatalog() {
     ...checklistCatalog,
     ...heavyEquipmentChecklistCatalog,
     ...lightVehicleChecklistCatalog,
+    ...craneChecklistCatalog,
   ];
   const catalogKeys = new Set(combinedCatalog.map((x) => `${x.category}::${x.label}`));
 
@@ -230,7 +312,7 @@ async function seedChecklistCatalog() {
   });
 
   console.log(
-    `Seed checklist: ${combinedCatalog.length} poin aktif (${checklistCatalog.length} jalan + ${heavyEquipmentChecklistCatalog.length} alat berat + ${lightVehicleChecklistCatalog.length} light vehicle); ${deactivated} poin di luar katalog dinonaktifkan; ${legacyOff.count} baris pada kategori lama dipastikan nonaktif.`,
+    `Seed checklist: ${combinedCatalog.length} poin aktif (${checklistCatalog.length} jalan + ${heavyEquipmentChecklistCatalog.length} alat berat + ${lightVehicleChecklistCatalog.length} light vehicle + ${craneChecklistCatalog.length} crane); ${deactivated} poin di luar katalog dinonaktifkan; ${legacyOff.count} baris pada kategori lama dipastikan nonaktif.`,
   );
 }
 

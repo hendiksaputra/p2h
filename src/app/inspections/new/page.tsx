@@ -5,6 +5,7 @@ import { DbUnavailable } from "@/components/DbUnavailable";
 import { PageHeader } from "@/components/PageHeader";
 import { getSessionUser } from "@/lib/auth-session";
 import { getDbErrorMessage } from "@/lib/db-error";
+import { isCraneInspectionCategory } from "@/lib/crane-inspection";
 import { isHeavyEquipmentInspectionCategory } from "@/lib/heavy-equipment-inspection";
 import { isLightVehicleInspectionCategory } from "@/lib/light-vehicle-inspection";
 import { canAccessInspection } from "@/lib/inspection-access";
@@ -73,17 +74,22 @@ export default async function NewInspectionPage(props: Props) {
   }
 
   const roadItems = items.filter(
-    (i) => !isHeavyEquipmentInspectionCategory(i.category) && !isLightVehicleInspectionCategory(i.category),
+    (i) =>
+      !isHeavyEquipmentInspectionCategory(i.category) &&
+      !isLightVehicleInspectionCategory(i.category) &&
+      !isCraneInspectionCategory(i.category),
   );
   const heavyItems = items.filter((i) => isHeavyEquipmentInspectionCategory(i.category));
   const lightItems = items.filter((i) => isLightVehicleInspectionCategory(i.category));
-  const hasAnyChecklist = roadItems.length > 0 || heavyItems.length > 0 || lightItems.length > 0;
+  const craneItems = items.filter((i) => isCraneInspectionCategory(i.category));
+  const hasAnyChecklist =
+    roadItems.length > 0 || heavyItems.length > 0 || lightItems.length > 0 || craneItems.length > 0;
 
   return (
     <>
       <PageHeader
         title="Form P2H baru"
-        description="Pilih unit, lalu isi checklist. ALAT BERAT memakai checklist standar + alat berat; jenis LIGHT VEHICLE memakai checklist light vehicle."
+        description="Pilih unit, lalu isi checklist. ALAT BERAT, LIGHT VEHICLE, serta OVER HEAD CRANE / GANTRY CRANE memakai checklist sesuai jenis."
         action={
           <Link href="/inspections" className="text-sm font-medium text-slate-600 hover:text-slate-900">
             ← Kembali
@@ -203,6 +209,7 @@ export default async function NewInspectionPage(props: Props) {
             roadItems={roadItems}
             heavyItems={heavyItems}
             lightItems={lightItems}
+            craneItems={craneItems}
           />
 
           <InspectionNewSubmitRow />

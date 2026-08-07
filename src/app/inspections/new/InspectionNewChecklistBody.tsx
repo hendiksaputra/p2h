@@ -1,7 +1,12 @@
 "use client";
 
 import { useMemo } from "react";
-import { ChecklistCategoryHeader, CHECKLIST_CATEGORY_ORDER, sortChecklistCategoryEntries } from "@/components/ChecklistCategoryHeader";
+import {
+  ChecklistCategoryHeader,
+  CHECKLIST_CATEGORY_ORDER,
+  sortChecklistCategoryEntries,
+} from "@/components/ChecklistCategoryHeader";
+import { CRANE_INSPECTION_CATEGORY_ORDER, isCraneVehicleType } from "@/lib/crane-inspection";
 import { HEAVY_INSPECTION_CATEGORY_ORDER } from "@/lib/heavy-equipment-inspection";
 import {
   isLightVehicleType,
@@ -32,6 +37,7 @@ type Props = {
   roadItems: ChecklistItemRow[];
   heavyItems: ChecklistItemRow[];
   lightItems: ChecklistItemRow[];
+  craneItems: ChecklistItemRow[];
 };
 
 export function InspectionNewChecklistBody({
@@ -40,6 +46,7 @@ export function InspectionNewChecklistBody({
   roadItems,
   heavyItems,
   lightItems,
+  craneItems,
 }: Props) {
   const { vehicleId } = useInspectionNewVehicle();
 
@@ -51,17 +58,20 @@ export function InspectionNewChecklistBody({
   const plate = selected?.plateNumber ?? "";
   const useHeavy = normalizePlate(plate) === HEAVY_EQUIPMENT_PLATE_NORMALIZED;
   const useLight = !useHeavy && isLightVehicleType(selected?.vehicleType);
+  const useCrane = !useHeavy && !useLight && isCraneVehicleType(selected?.vehicleType);
 
-  /** ALAT BERAT: standar + alat berat. LIGHT VEHICLE: hanya checklist light vehicle. Lainnya: standar. */
   const activeItems = useHeavy
     ? [...roadItems, ...heavyItems]
     : useLight
       ? lightItems
-      : roadItems;
+      : useCrane
+        ? craneItems
+        : roadItems;
 
   const hasRoad = roadItems.length > 0;
   const hasHeavy = heavyItems.length > 0;
   const hasLight = lightItems.length > 0;
+  const hasCrane = craneItems.length > 0;
 
   const grouped = useMemo(() => {
     const m = new Map<string, ChecklistItemRow[]>();
@@ -78,14 +88,25 @@ export function InspectionNewChecklistBody({
       ? ([...CHECKLIST_CATEGORY_ORDER, ...HEAVY_INSPECTION_CATEGORY_ORDER] as readonly string[])
       : useLight
         ? LIGHT_VEHICLE_INSPECTION_CATEGORY_ORDER
-        : CHECKLIST_CATEGORY_ORDER;
+        : useCrane
+          ? CRANE_INSPECTION_CATEGORY_ORDER
+          : CHECKLIST_CATEGORY_ORDER;
     return sortChecklistCategoryEntries(Array.from(grouped.entries()), order);
-  }, [grouped, useHeavy, useLight]);
+  }, [grouped, useHeavy, useLight, useCrane]);
 
   const checklistForSummary = useMemo(
     () => activeItems.map((i) => ({ id: i.id, label: i.label, category: i.category })),
     [activeItems],
   );
+
+  if (useCrane && !hasCrane) {
+    return (
+      <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+        Master checklist <strong>OVER HEAD CRANE / GANTRY CRANE</strong> belum ada di database. Jalankan{" "}
+        <code className="rounded bg-amber-100 px-1">npm run db:seed</code>, lalu muat ulang halaman ini.
+      </div>
+    );
+  }
 
   if (useLight && !hasLight) {
     return (
@@ -100,12 +121,13 @@ export function InspectionNewChecklistBody({
     return (
       <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
         Master checklist kosong. Jalankan{" "}
-        <code className="rounded bg-amber-100 px-1">npm run db:seed</code> pada server, lalu muat ulang halaman ini.
+        <code className="rounded bg-amber-100 px-1">npm run db:seed</code> pada server, lalu muat ulang halaman
+        ini.
       </div>
     );
   }
 
-  if (!useHeavy && !useLight && roadItems.length === 0) {
+  if (!useHeavy && !useLight && !useCrane && roadItems.length === 0) {
     return (
       <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
         Master checklist kendaraan jalan kosong. Jalankan{" "}
@@ -114,8 +136,18 @@ export function InspectionNewChecklistBody({
     );
   }
 
+  const craneTypeLabel = (selected?.vehicleType ?? "").trim() || "CRANE";
+
   return (
     <>
+      {vehicleId && useCrane ? (
+        <p className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-2 text-sm text-slate-700">
+          Jenis kendaraan <strong>{craneTypeLabel}</strong> — checklist mengikuti form pemeriksaan{" "}
+          <strong>OVER HEAD CRANE / GANTRY CRANE</strong> (SWL, pelindung, switch, electrical, hoist, sling,
+          hook, boom, ESD, indicator).
+        </p>
+      ) : null}
+
       {vehicleId && useLight ? (
         <p className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-2 text-sm text-slate-700">
           Jenis kendaraan <strong>LIGHT VEHICLE</strong> — checklist mengikuti form pemeriksaan light vehicle

@@ -1,4 +1,5 @@
 import { HEAVY_INSPECTION_CATEGORY_HEADER } from "@/lib/heavy-equipment-inspection";
+import { CRANE_INSPECTION_CATEGORY_HEADER } from "@/lib/crane-inspection";
 import { LIGHT_VEHICLE_INSPECTION_CATEGORY_HEADER } from "@/lib/light-vehicle-inspection";
 
 type Props = { category: string };
@@ -62,6 +63,7 @@ function iconForCategory(category: string) {
     case "VESSEL":
       return <IconWrench className={ICON_CLASS} />;
     case "LIGHT VEHICLE":
+    case "CRANE":
       return <IconCar className={ICON_CLASS} />;
     case "Eksterior":
       return <IconCar className={ICON_CLASS} />;
@@ -102,7 +104,8 @@ export function sortChecklistCategoryEntries<T>(
 export function ChecklistCategoryHeader({ category }: Props) {
   const heavy = HEAVY_INSPECTION_CATEGORY_HEADER[category];
   const light = LIGHT_VEHICLE_INSPECTION_CATEGORY_HEADER[category];
-  const special = heavy ?? light;
+  const crane = CRANE_INSPECTION_CATEGORY_HEADER[category];
+  const special = heavy ?? light ?? crane;
   return (
     <div className="flex items-start gap-3">
       {iconForCategory(category)}
